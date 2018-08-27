@@ -550,8 +550,8 @@ namespace CryptoNote {
 		uint64_t nextDiffZ = low / timeSpan;
 
 		// minimum limit
-		if (nextDiffZ < 100000) {
-			nextDiffZ = 100000;
+		if (nextDiffZ < 1000) {
+			nextDiffZ = 1000;
 		}
 
 		return nextDiffZ;
@@ -613,8 +613,8 @@ namespace CryptoNote {
 		next_difficulty = static_cast<uint64_t>(nextDifficulty);
 
 		// minimum limit
-		if (next_difficulty < 100000) {
-			next_difficulty = 100000;
+		if (next_difficulty < 1000) {
+			next_difficulty = 1000;
 		}
 
 		return next_difficulty;
@@ -658,8 +658,8 @@ namespace CryptoNote {
 		}
 
 		// minimum limit
-		if (next_D < 100000) {
-			next_D = 100000;
+		if (next_D < 1000) {
+			next_D = 1000;
 		}
 
 		return next_D;

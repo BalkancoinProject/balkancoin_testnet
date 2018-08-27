@@ -90,9 +90,9 @@ const size_t   FUSION_TX_MAX_SIZE                            = CRYPTONOTE_BLOCK_
 const size_t   FUSION_TX_MIN_INPUT_COUNT                     = 12;
 const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              = 4;
 
-const uint32_t UPGRADE_HEIGHT_V2                             = 60000;
-const uint32_t UPGRADE_HEIGHT_V3                             = 350000;
-const uint32_t UPGRADE_HEIGHT_V4                             = 720000;
+const uint32_t UPGRADE_HEIGHT_V2                             = 0;
+const uint32_t UPGRADE_HEIGHT_V3                             = 1;
+const uint32_t UPGRADE_HEIGHT_V4                             = 300;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90; // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -108,7 +108,7 @@ const char     CRYPTONOTE_BLOCKCHAIN_INDICES_FILENAME[]      = "blockchainindice
 const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json";
 } // parameters
 
-const char     CRYPTONOTE_NAME[]                             = "balkancoin";
+const char     CRYPTONOTE_NAME[]                             = "balkancoin_testnet";
 const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff0001d38999d21e029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd08807121017ecfe20f0d176c94562c86c673d4e954e5f2ba75cde34757e25524c41fb657be";
 
 const uint8_t  CURRENT_TRANSACTION_VERSION                   =  1;
@@ -123,8 +123,8 @@ const size_t   BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT        =  10000;  //by def
 const size_t   BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  128;    //by default, blocks count in blocks downloading
 const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
-const int      P2P_DEFAULT_PORT                              =  37777;
-const int      RPC_DEFAULT_PORT                              =  38777;
+const int      P2P_DEFAULT_PORT                              =  37778;
+const int      RPC_DEFAULT_PORT                              =  38778;
 
 const size_t   P2P_LOCAL_WHITE_PEERLIST_LIMIT                =  1000;
 const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;
@@ -147,9 +147,8 @@ const uint32_t P2P_IDLE_CONNECTION_KILL_INTERVAL             = (5 * 60);      //
 const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "8f80f9a5a434a9f1510d13336228debfee9c918ce505efe225d8c94d045fa115";
 
 const char* const SEED_NODES[] = {
-  "192.169.140.225:37777",
-  "192.169.142.165:37777",
-  "95.179.145.244:37777"
+  "80.240.31.237:37778",
+  "45.77.91.134:37778"
 };
 
 struct CheckpointData {
@@ -158,14 +157,6 @@ struct CheckpointData {
 };
 
 const std::initializer_list<CheckpointData> CHECKPOINTS = {
-  {31000, "b7720283062e0be92cdee82b6b694461a8076695a238a79827a2788ab0494dee"},
-  {61000, "d796d6b21bac7a6d1f280a20280c2dad1b79d0394704a1a62b52b9b3ac31993f"},
-  {121000, "770f0e091e9f82dde21e4d40bd0418c76bf4856820b00900c46436500eb2fbdf"},
-  {241000, "1dc96ed39253e7e9de54faba423ea9d6bb5c6270f4da3b26c0d1052369ab4ed2"},
-  {371000, "467e9070b8c9fa896bf809f0ae8796ba593f405ade4e6c4d5b1952144c259d75"},
-  {401000, "148c7b8ea41694eb65767eced9ccee882401243d760770efded47aa95efbc266"},
-  {501000, "d8c9bf33400386424471602a0cface7021b09b7dfb60d5e983f78c7839b3f377"},
-  {681000, "011ac783de0c9e3701c622d275c0517f4f6e1c6d9ea39ed0d02b041720d4db13"}
 };
 
 } // CryptoNote
