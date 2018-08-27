@@ -33,11 +33,13 @@
 #include <string.h>
 #include <time.h>
 
+#include <Common/Base58.h>
 #include "Logging/ConsoleLogger.h"
 #include "WalletLegacy/WalletHelper.h"
 #include "WalletLegacy/WalletLegacySerialization.h"
 #include "WalletLegacy/WalletLegacySerializer.h"
 #include "WalletLegacy/WalletUtils.h"
+#include "Common/StringTools.h"
 #include "mnemonics/electrum-words.h"
 
 extern "C"
@@ -478,7 +480,7 @@ uint64_t WalletLegacy::dustBalance() {
 	for (size_t i = 0; i < outputs.size(); ++i) {
 		const auto& out = outputs[i];
 		if (!m_transactionsCache.isUsed(out)) {
-			if (out.amount < m_currency.defaultDustThreshold() && !is_valid_decomposed_amount(out.amount)) {
+			if (/*out.amount < m_currency.defaultDustThreshold() &&*/ !is_valid_decomposed_amount(out.amount)) {
 				money += out.amount;
 			}
 		}
@@ -730,6 +732,17 @@ void WalletLegacy::getAccountKeys(AccountKeys& keys) {
 std::vector<TransactionId> WalletLegacy::deleteOutdatedUnconfirmedTransactions() {
   std::lock_guard<std::mutex> lock(m_cacheMutex);
   return m_transactionsCache.deleteOutdatedTransactions();
+}
+
+Crypto::SecretKey WalletLegacy::getTxKey(Crypto::Hash& txid) {
+  TransactionId ti = m_transactionsCache.findTransactionByHash(txid);
+  WalletLegacyTransaction transaction;
+  getTransaction(ti, transaction);
+  if (transaction.secretKey) {
+     return reinterpret_cast<const Crypto::SecretKey&>(transaction.secretKey.get());
+  } else {
+     return NULL_SECRET_KEY;
+  }
 }
 
 } //namespace CryptoNote
