@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2014-2016, The Monero Project
 // Copyright (c) 2016-2018, Karbo developers
 // Copyright (c) 2018-2019, Balkancoin developers
 //
@@ -325,5 +326,94 @@ using CryptoNote::ISerializer;
 			}
 		};
 	};
+
+	struct COMMAND_RPC_SIGN_MESSAGE
+	{
+		struct request
+		{
+			std::string message;
+ 
+			void serialize(ISerializer& s)
+			{
+				KV_MEMBER(message);
+			}
+		};
+
+		struct response
+		{
+			std::string signature;
+
+			void serialize(ISerializer& s)
+			{
+				KV_MEMBER(signature);
+			}
+		};
+	};
+
+	struct COMMAND_RPC_VERIFY_MESSAGE
+	{
+		struct request
+		{
+			std::string message;
+			std::string address;
+			std::string signature;
+
+			void serialize(ISerializer& s)
+			{
+				KV_MEMBER(message);
+				KV_MEMBER(address);
+				KV_MEMBER(signature);
+			}
+		};
+
+		struct response
+		{
+			bool good;
+ 
+			void serialize(ISerializer& s)
+			{
+				KV_MEMBER(good);
+			}
+		};
+	};
+
+	struct COMMAND_RPC_CHANGE_PASSWORD
+	{
+		struct request
+		{
+			std::string old_password;
+			std::string new_password;
+
+			void serialize(ISerializer& s)
+			{
+				KV_MEMBER(old_password);
+				KV_MEMBER(new_password);
+			}
+		};
+
+		struct response
+		{
+			bool password_changed;
+
+			void serialize(ISerializer& s)
+			{
+				KV_MEMBER(password_changed);
+			}
+		};
+	};
+
+	struct COMMAND_RPC_GET_OUTPUTS
+    {
+      typedef CryptoNote::EMPTY_STRUCT request;
+
+      struct response
+      {
+        size_t unlocked_outputs_count;
+
+        void serialize(ISerializer& s) {
+          KV_MEMBER(unlocked_outputs_count)
+        }
+      };
+    };
 
 }} //Tools::wallet_rpc

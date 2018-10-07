@@ -528,6 +528,28 @@ void WalletGreen::load(const std::string& path, const std::string& password, std
     }
   }
 
+  // Read all output keys cache
+  try {
+    std::vector<AccountPublicAddress> subscriptionList;
+    m_synchronizer.getSubscriptions(subscriptionList);
+    for (auto& addr : subscriptionList) {
+      auto sub = m_synchronizer.getSubscription(addr);
+      if (sub != nullptr) {
+         std::vector<TransactionOutputInformation> allTransfers;
+         ITransfersContainer* container = &sub->getContainer();
+         container->getOutputs(allTransfers, ITransfersContainer::IncludeAll);
+         m_logger(INFO, BRIGHT_WHITE) << "Known Transfers " << allTransfers.size();
+         for (auto& o : allTransfers) {
+             if (o.type == TransactionTypes::OutputType::Key) {
+                m_synchronizer.addPublicKeysSeen(addr, o.transactionHash, o.outputKey);
+             }
+         }
+      }
+    }
+  } catch (const std::exception& e) {
+    m_logger(ERROR, BRIGHT_RED) << "Failed to read output keys!! Continue without output keys: " << e.what();
+  }
+
   m_blockchainSynchronizer.addObserver(this);
 
   initTransactionPool();
@@ -2942,7 +2964,7 @@ size_t WalletGreen::createFusionTransaction(uint64_t threshold, uint64_t mixin,
 
   const size_t MAX_FUSION_OUTPUT_COUNT = 4;
 
-  uint64_t fusionTreshold = m_node.getLastKnownBlockHeight() < CryptoNote::parameters::UPGRADE_HEIGHT_V4 ? UINT64_C(100000) : m_currency.defaultDustThreshold();
+  uint64_t fusionTreshold = m_currency.defaultDustThreshold();
 
   if (threshold <= fusionTreshold) {
     m_logger(ERROR, BRIGHT_RED) << "Fusion transaction threshold is too small. Threshold " << m_currency.formatAmount(threshold) <<
