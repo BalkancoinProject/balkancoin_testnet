@@ -1,19 +1,21 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018, The BBSCoin Developers
+// Copyright (c) 2018, The Karbo Developers
 //
-// This file is part of Bytecoin.
+// This file is part of Karbo.
 //
-// Bytecoin is free software: you can redistribute it and/or modify
+// Karbo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Bytecoin is distributed in the hope that it will be useful,
+// Karbo is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
+// along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "TransfersConsumer.h"
 
@@ -132,7 +134,13 @@ ITransfersSubscription& TransfersConsumer::addSubscription(const AccountSubscrip
   if (res.get() == nullptr) {
     res.reset(new TransfersSubscription(m_currency, m_logger.getLogger(), subscription));
     m_spendKeys.insert(subscription.keys.address.spendPublicKey);
-    updateSyncStart();
+    if (m_subscriptions.size() == 1) {
+      m_syncStart = res->getSyncStart();
+    } else {
+      auto subStart = res->getSyncStart();
+      m_syncStart.height = std::min(m_syncStart.height, subStart.height);
+      m_syncStart.timestamp = std::min(m_syncStart.timestamp, subStart.timestamp);
+    }
   }
 
   return *res;
@@ -378,7 +386,7 @@ void TransfersConsumer::addPublicKeysSeen(const Crypto::Hash& transactionHash, c
     public_keys_seen.insert(outputKey);
 }
 
-std::error_code createTransfers(
+std::error_code TransfersConsumer::createTransfers(
   const AccountKeys& account,
   const TransactionBlockInfo& blockInfo,
   const ITransactionReader& tx,
@@ -387,6 +395,7 @@ std::error_code createTransfers(
   std::vector<TransactionOutputInformationIn>& transfers) {
 
   auto txPubKey = tx.getTransactionPublicKey();
+  auto txHash = tx.getTransactionHash();
   std::vector<PublicKey> temp_keys;
   std::lock_guard<std::mutex> lk(seen_mutex);
 
@@ -427,16 +436,19 @@ std::error_code createTransfers(
 
       assert(out.key == reinterpret_cast<const PublicKey&>(in_ephemeral.publicKey));
 
-      std::unordered_set<Crypto::Hash>::iterator it = transactions_hash_seen.find(tx.getTransactionHash());
+      std::unordered_set<Crypto::Hash>::iterator it = transactions_hash_seen.find(txHash);
 	  if (it == transactions_hash_seen.end()) {
         std::unordered_set<Crypto::PublicKey>::iterator key_it = public_keys_seen.find(out.key);
         if (key_it != public_keys_seen.end()) {
-          throw std::runtime_error("duplicate transaction output key is found");
+          m_logger(ERROR, BRIGHT_RED) << "Failed to process transaction " << Common::podToHex(txHash) << ": duplicate output key is found!";
+          return std::error_code();
+        }
+        if (std::find(temp_keys.begin(), temp_keys.end(), out.key) != temp_keys.end()) {
+          m_logger(ERROR, BRIGHT_RED) << "Failed to process transaction " << Common::podToHex(txHash) << ": the same output key is present more than once";
           return std::error_code();
         }
         temp_keys.push_back(out.key);
 	  }
-
       info.amount = amount;
       info.outputKey = out.key;
 
@@ -446,17 +458,20 @@ std::error_code createTransfers(
       tx.getOutput(idx, out, amount);
 
 	  for (const auto& key : out.keys) {
-		  
-		  std::unordered_set<Crypto::Hash>::iterator it = transactions_hash_seen.find(tx.getTransactionHash());
-		  if (it == transactions_hash_seen.end()) {
-			  std::unordered_set<Crypto::PublicKey>::iterator key_it = public_keys_seen.find(key);
-			  if (key_it != public_keys_seen.end()) {
-				  throw std::runtime_error("duplicate transaction output key is found");
-				  return std::error_code();
-			  }
-			  temp_keys.push_back(key);
-		  }
-	  }
+        std::unordered_set<Crypto::Hash>::iterator it = transactions_hash_seen.find(txHash);
+        if (it == transactions_hash_seen.end()) {
+          std::unordered_set<Crypto::PublicKey>::iterator key_it = public_keys_seen.find(key);
+          if (key_it != public_keys_seen.end()) {
+			  m_logger(ERROR, BRIGHT_RED) << "Failed to process transaction " << Common::podToHex(txHash) << ": duplicate multisignature output key is found";
+            return std::error_code();
+          }
+          if (std::find(temp_keys.begin(), temp_keys.end(), key) != temp_keys.end()) {
+            m_logger(ERROR, BRIGHT_RED) << "Failed to process transaction " << Common::podToHex(txHash) << ": the same multisignature output key is present more than once";
+            return std::error_code();
+          }
+          temp_keys.push_back(key);
+        }
+      }
       info.amount = amount;
       info.requiredSignatures = out.requiredSignatureCount;
     }
@@ -464,24 +479,15 @@ std::error_code createTransfers(
     transfers.push_back(info);
   }
 
-  transactions_hash_seen.emplace(tx.getTransactionHash());
-  for (std::vector<PublicKey>::iterator it = temp_keys.begin(); it != temp_keys.end(); it++) {
-    public_keys_seen.insert(*it);
-  }
+  transactions_hash_seen.emplace(txHash);
+  std::copy(temp_keys.begin(), temp_keys.end(), std::inserter(public_keys_seen, public_keys_seen.end()));
 
   return std::error_code();
 }
 
 std::error_code TransfersConsumer::preprocessOutputs(const TransactionBlockInfo& blockInfo, const ITransactionReader& tx, PreprocessInfo& info) {
   std::unordered_map<PublicKey, std::vector<uint32_t>> outputs;
-  try {
-    findMyOutputs(tx, m_viewSecret, m_spendKeys, outputs);
-  }
-  catch (const std::exception& e) {
-    m_logger(ERROR, BRIGHT_RED) << "Failed to process transaction: " << e.what() << ", transaction hash " << Common::podToHex(tx.getTransactionHash());
-    return std::error_code();
-  }
-
+  findMyOutputs(tx, m_viewSecret, m_spendKeys, outputs);
   if (outputs.empty()) {
     return std::error_code();
   }
@@ -499,16 +505,10 @@ std::error_code TransfersConsumer::preprocessOutputs(const TransactionBlockInfo&
     auto it = m_subscriptions.find(kv.first);
     if (it != m_subscriptions.end()) {
       auto& transfers = info.outputs[kv.first];
-	  try {
-		  errorCode = createTransfers(it->second->getKeys(), blockInfo, tx, kv.second, info.globalIdxs, transfers);
-		  if (errorCode) {
-			  return errorCode;
-		  }
-	  }
-	  catch (const std::exception& e) {
-		  m_logger(ERROR, BRIGHT_RED) << "Failed to process transaction: " << e.what() << ", transaction hash " << Common::podToHex(tx.getTransactionHash());
-		  return std::error_code();
-	  }
+      errorCode = createTransfers(it->second->getKeys(), blockInfo, tx, kv.second, info.globalIdxs, transfers);
+      if (errorCode) {
+        return errorCode;
+      }
     }
   }
 

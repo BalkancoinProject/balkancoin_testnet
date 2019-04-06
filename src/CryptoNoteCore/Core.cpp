@@ -1,19 +1,19 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers, The Karbowanec developers, The Balkancoin developers
 //
-// This file is part of Bytecoin.
+// This file is part of Karbo.
 //
-// Bytecoin is free software: you can redistribute it and/or modify
+// Karbo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Bytecoin is distributed in the hope that it will be useful,
+// Karbo is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
+// along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Core.h"
 
@@ -254,13 +254,14 @@ bool core::get_stat_info(core_stat_info& st_inf) {
   return true;
 }
 
-bool core::check_tx_mixin(const Transaction& tx) {
+bool core::check_tx_mixin(const Transaction& tx, uint32_t height) {
   size_t inputIndex = 0;
   for (const auto& txin : tx.inputs) {
     assert(inputIndex < tx.signatures.size());
     if (txin.type() == typeid(KeyInput)) {
       uint64_t txMixin = boost::get<KeyInput>(txin).outputIndexes.size();
-      if (txMixin > m_currency.maxMixin()) {
+      if (height > CryptoNote::parameters::MIN_TX_MIXIN_V1_HEIGHT && height < CryptoNote::parameters::MIN_TX_MIXIN_V2_HEIGHT && txMixin > CryptoNote::parameters::MAX_TX_MIXIN_SIZE_V1
+       || height > CryptoNote::parameters::MIN_TX_MIXIN_V2_HEIGHT && txMixin > CryptoNote::parameters::MAX_TX_MIXIN_SIZE_V2) {
         logger(ERROR) << "Transaction " << getObjectHash(tx) << " has too large mixIn count, rejected";
         return false;
       }
@@ -293,9 +294,10 @@ bool core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
 	getObjectHash(tx, h, blobSize);
 	const uint64_t fee = inputs_amount - outputs_amount;
 	bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, height);
-	if (!isFusionTransaction && (getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4 ? fee < m_currency.minimumFee() : 
+	if (!isFusionTransaction)
+		if (height < CryptoNote::parameters::MINIMUM_FEE_V2_HEIGHT ? fee < CryptoNote::parameters::MINIMUM_FEE_V1 : (getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4 ? fee < m_currency.minimumFee() :
 		fee < getMinimalFeeForHeight(loose_check ? height - CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY : height))) {
-		logger(DEBUGGING) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " <<
+		logger(ERROR) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " <<
 			m_currency.formatAmount(getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4 ? m_currency.minimumFee() : 
 			getMinimalFeeForHeight(loose_check ? height - CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY : height));
 		tvc.m_verification_failed = true;
@@ -306,10 +308,35 @@ bool core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
 	return true;
 }
 
+bool core::check_tx_unmixable(const Transaction& tx, uint32_t height) {
+  for (const auto& out : tx.outputs) {
+    if (!is_valid_decomposed_amount(out.amount) && height >= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+      logger(ERROR) << "Invalid decomposed output amount " << out.amount << " for tx id= " << getObjectHash(tx);
+      return false;
+    }
+  }
+  return true;
+}
+
 bool core::check_tx_semantic(const Transaction& tx, bool keeped_by_block) {
   if (!tx.inputs.size()) {
     logger(ERROR) << "tx with empty inputs, rejected for tx id= " << getObjectHash(tx);
     return false;
+  }
+
+  if (tx.inputs.size() != tx.signatures.size()) {
+    logger(ERROR) << "tx signatures size doesn't match inputs size, rejected for tx id= " << getObjectHash(tx);
+    return false;
+  }
+
+  for (size_t i = 0; i < tx.inputs.size(); ++i) {
+    if (tx.inputs[i].type() == typeid(KeyInput)) {
+      if (boost::get<KeyInput>(tx.inputs[i]).outputIndexes.size() != tx.signatures[i].size()) {
+        logger(ERROR) << "tx signatures count doesn't match outputIndexes count for input " 
+          << i << ", rejected for tx id= " << getObjectHash(tx);
+        return false;
+      }
+    }
   }
 
   if (!check_inputs_types_supported(tx)) {
@@ -452,9 +479,10 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
         logger(ERROR, BRIGHT_RED) << "Failed to append merge mining tag to extra of the parent block miner transaction";
         return false;
       }
-    }
-    else if (b.majorVersion >= BLOCK_MAJOR_VERSION_4) {
+    } else if (b.majorVersion == BLOCK_MAJOR_VERSION_4) {
       b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_4) == UpgradeDetectorBase::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
+    } else if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_5) == UpgradeDetectorBase::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
     }
 
     b.previousBlockHash = get_tail_id();
@@ -992,6 +1020,11 @@ bool core::getBlockDifficulty(uint32_t height, difficulty_type& difficulty) {
   return true;
 }
 
+bool core::getBlockCumulativeDifficulty(uint32_t height, difficulty_type& difficulty) {
+  difficulty = m_blockchain.blockCumulativeDifficulty(height);
+  return true;
+}
+
 bool core::getBlockContainingTx(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) {
   return m_blockchain.getBlockContainingTransaction(txId, blockId, blockHeight);
 }
@@ -1130,17 +1163,15 @@ bool core::getPaymentId(const Transaction& transaction, Crypto::Hash& paymentId)
   return getPaymentIdFromTransactionExtraNonce(extraNonce.nonce, paymentId);
 }
 
-bool core::fillTxExtra(const std::vector<uint8_t>& rawExtra, TransactionExtraDetails& extraDetails) {
+bool core::fillTxExtra(const std::vector<uint8_t>& rawExtra, TransactionExtraDetails2& extraDetails) {
   extraDetails.raw = rawExtra;
   std::vector<TransactionExtraField> txExtraFields;
   parseTransactionExtra(rawExtra, txExtraFields);
   for (const TransactionExtraField& field : txExtraFields) {
-    if (typeid(TransactionExtraPadding) == field.type()) {
-      extraDetails.padding.push_back(std::move(boost::get<TransactionExtraPadding>(field).size));
-    } else if (typeid(TransactionExtraPublicKey) == field.type()) {
-      extraDetails.publicKey.push_back(std::move(boost::get<TransactionExtraPublicKey>(field).publicKey));
+    if (typeid(TransactionExtraPublicKey) == field.type()) {
+      extraDetails.publicKey = std::move(boost::get<TransactionExtraPublicKey>(field).publicKey);
     } else if (typeid(TransactionExtraNonce) == field.type()) {
-      extraDetails.nonce.push_back(Common::toHex(boost::get<TransactionExtraNonce>(field).nonce.data(), boost::get<TransactionExtraNonce>(field).nonce.size()));
+      extraDetails.nonce = boost::get<TransactionExtraNonce>(field).nonce;
     }
   }
   return true;
@@ -1355,8 +1386,12 @@ bool core::fillTransactionDetails(const Transaction& transaction, TransactionDet
         return false;
       }
       txInToKeyDetails.mixin = txInToKey.outputIndexes.size();
-      txInToKeyDetails.output.number = outputReferences.back().second;
-      txInToKeyDetails.output.transactionHash = outputReferences.back().first;
+	  for (const auto& r : outputReferences) {
+		  TransactionOutputReferenceDetails d;
+		  d.number = r.second;
+		  d.transactionHash = r.first;
+		  txInToKeyDetails.outputs.push_back(d);
+	  }
 	  txInDetails = txInToKeyDetails;
     } else if (txIn.type() == typeid(MultisignatureInput)) {
       MultisignatureInputDetails txInMultisigDetails;
@@ -1417,11 +1452,18 @@ bool core::handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& 
       return false;
     }
 
-    if (!check_tx_mixin(tx)) {
+    if (!check_tx_mixin(tx, height)) {
       logger(INFO) << "Transaction verification failed: mixin count for transaction " << txHash << " is too large, rejected";
       tvc.m_verification_failed = true;
       return false;
     }
+
+    if (!check_tx_unmixable(tx, height)) {
+      logger(ERROR) << "Transaction verification failed: unmixable output for transaction " << txHash << ", rejected";
+      tvc.m_verification_failed = true;
+      return false;
+	}
+
   }
 
   if (!check_tx_semantic(tx, keptByBlock)) {
@@ -1486,12 +1528,20 @@ bool core::f_getMixin(const Transaction& transaction, uint64_t& mixin) {
   return true;
 }
 
+bool core::is_key_image_spent(const Crypto::KeyImage& key_im) {
+  return m_blockchain.have_tx_keyimg_as_spent(key_im);
+}
+
 bool core::addMessageQueue(MessageQueue<BlockchainMessage>& messageQueue) {
   return m_blockchain.addMessageQueue(messageQueue);
 }
 
 bool core::removeMessageQueue(MessageQueue<BlockchainMessage>& messageQueue) {
   return m_blockchain.removeMessageQueue(messageQueue);
+}
+
+void core::rollbackBlockchain(uint32_t height) {
+  m_blockchain.rollbackBlockchainTo(height);
 }
 
 }
