@@ -1,19 +1,19 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 //
-// This file is part of Bytecoin.
+// This file is part of Karbo.
 //
-// Bytecoin is free software: you can redistribute it and/or modify
+// Karbo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Bytecoin is distributed in the hope that it will be useful,
+// Karbo is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
+// along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "InProcessNode.h"
 
@@ -337,7 +337,7 @@ std::error_code InProcessNode::doRelayTransaction(const CryptoNote::Transaction&
     CryptoNote::BinaryArray transactionBinaryArray = toBinaryArray(transaction);
     CryptoNote::tx_verification_context tvc = boost::value_initialized<CryptoNote::tx_verification_context>();
 
-    if (!core.handle_incoming_tx(transactionBinaryArray, tvc, false)) {
+    if (!core.handle_incoming_tx(transactionBinaryArray, tvc, false, false)) {
       return make_error_code(CryptoNote::error::REQUEST_ERROR);
     }
 
@@ -379,6 +379,10 @@ uint32_t InProcessNode::getLocalBlockCount() const {
   }
 
   return lastLocalBlockHeaderInfo.index + 1;
+}
+
+uint32_t InProcessNode::getNodeHeight() const {
+  return getLocalBlockCount();
 }
 
 uint32_t InProcessNode::getKnownBlockCount() const {

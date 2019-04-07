@@ -1,0 +1,17 @@
+[Unit]
+Description=Balkancoin BKC service
+After=network.target
+
+[Service]
+Type=oneshot
+User=balkancoin
+Group=balkancoin
+PermissionsStartOnly=true
+RemainAfterExit=yes
+ExecStartPre=-/bin/mkdir -p /var/run/balkancoin
+ExecStartPre=/bin/chown -R balkancoin:balkancoin /var/run/balkancoin/
+ExecStart=/usr/lib/balkancoin/bkcd.sh --start
+ExecStop=/usr/lib/balkancoin/bkcd.sh --stop
+
+[Install]
+WantedBy=multi-user.target

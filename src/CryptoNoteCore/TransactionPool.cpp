@@ -1,20 +1,20 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016, The Forknote developers
 //
-// This file is part of Bytecoin.
+// This file is part of Karbo.
 //
-// Bytecoin is free software: you can redistribute it and/or modify
+// Karbo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Bytecoin is distributed in the hope that it will be useful,
+// Karbo is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
+// along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "TransactionPool.h"
 
@@ -143,15 +143,6 @@ namespace CryptoNote {
 
     const uint64_t fee = inputs_amount - outputs_amount;
     bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, m_core.get_current_blockchain_height());
-    if (!keptByBlock && !isFusionTransaction && (m_core.getCurrentBlockMajorVersion() < BLOCK_MAJOR_VERSION_4
-		? fee < m_currency.minimumFee() : fee < m_core.getMinimalFee())) {
-		logger(INFO) << "transaction fee is not enough: " << m_currency.formatAmount(fee) <<
-		", minimum fee: " << m_currency.formatAmount(m_core.getCurrentBlockMajorVersion() < BLOCK_MAJOR_VERSION_4 ?
-		m_currency.minimumFee() : m_core.getMinimalFee());
-      tvc.m_verification_failed = true;
-      tvc.m_tx_fee_too_small = true;
-      return false;
-    }
 
     //check key images for transaction if it is not kept by block
     if (!keptByBlock) {
@@ -212,14 +203,13 @@ namespace CryptoNote {
       txd.maxUsedBlock = maxUsedBlock;
       txd.lastFailedBlock.clear();
 
-      auto txd_p = m_transactions.insert(std::move(txd));
+      auto txd_p = m_transactions.insert(txd);
       if (!(txd_p.second)) {
         logger(ERROR, BRIGHT_RED) << "transaction already exists at inserting in memory pool";
         return false;
       }
-      m_paymentIdIndex.add(txd.tx);
+      m_paymentIdIndex.add(tx);
       m_timestampIndex.add(txd.receiveTime, txd.id);
-
     }
 
     tvc.m_added_to_pool = true;
@@ -705,7 +695,9 @@ namespace CryptoNote {
 
   bool tx_memory_pool::getTransactionIdsByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionIds) {
     std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
-    return m_paymentIdIndex.find(paymentId, transactionIds);
+    //return m_paymentIdIndex.find(paymentId, transactionIds);
+	transactionIds = m_paymentIdIndex.find(paymentId);
+	return true;
   }
 
   bool tx_memory_pool::getTransactionIdsByTimestamp(uint64_t timestampBegin, uint64_t timestampEnd, uint32_t transactionsNumberLimit, std::vector<Crypto::Hash>& hashes, uint64_t& transactionsNumberWithinTimestamps) {

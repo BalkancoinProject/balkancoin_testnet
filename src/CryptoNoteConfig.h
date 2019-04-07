@@ -5,20 +5,20 @@
 // Copyright (c) 2016-2018, The Karbowanec developers
 // Copyright (c) 2017-2018, The Balkancoin developers
 //
-// This file is part of Bytecoin.
+// This file is part of Karbo.
 //
-// Bytecoin is free software: you can redistribute it and/or modify
+// Karbo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Bytecoin is distributed in the hope that it will be useful,
+// Karbo is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
+// along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
@@ -55,12 +55,19 @@ const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT = CRYPTONOTE_BL
 const size_t   CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE        = 600;
 const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 8;
 
-const uint64_t MINIMUM_FEE                                   = UINT64_C(100000);
+const uint64_t MINIMUM_FEE_V1                                = UINT64_C(100000);
+const uint64_t MINIMUM_FEE_V2                                = UINT64_C(10000000);
+const uint32_t MINIMUM_FEE_V2_HEIGHT                         = 350002;
+const uint64_t MINIMUM_FEE                                   = MINIMUM_FEE_V2;
 const uint64_t MAXIMUM_FEE                                   = UINT64_C(10000000);
 
-const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(0);
+const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(100000);
 const uint64_t MIN_TX_MIXIN_SIZE                             = 2;
-const uint64_t MAX_TX_MIXIN_SIZE                             = 20;
+const uint64_t MAX_TX_MIXIN_SIZE_V1                          = 50;
+const uint64_t MAX_TX_MIXIN_SIZE_V2                          = 20;
+const uint64_t MAX_TX_MIXIN_SIZE                             = MAX_TX_MIXIN_SIZE_V2;
+const uint32_t MIN_TX_MIXIN_V1_HEIGHT                        = 2;
+const uint32_t MIN_TX_MIXIN_V2_HEIGHT                        = 301;
 const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT / 4 - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 
 const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DIFFICULTY_TARGET;
@@ -71,9 +78,9 @@ const size_t   DIFFICULTY_CUT                                = 60;  // timestamp
 const size_t   DIFFICULTY_LAG                                = 15;  // !!!
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
-static constexpr uint64_t POISSON_CHECK_TRIGGER = 10; // Reorg size that triggers poisson timestamp check
-static constexpr uint64_t POISSON_CHECK_DEPTH = 60;   // Main-chain depth of the poisson check. The attacker will have to tamper 50% of those blocks
-static constexpr double POISSON_LOG_P_REJECT = -75.0; // Reject reorg if the probablity that the timestamps are genuine is below e^x, -75 = 10^-33
+const uint64_t POISSON_CHECK_TRIGGER = 10; // Reorg size that triggers poisson timestamp check
+const uint64_t POISSON_CHECK_DEPTH = 60;   // Main-chain depth of the poisson check. The attacker will have to tamper 50% of those blocks
+const double POISSON_LOG_P_REJECT = -75.0; // Reject reorg if the probablity that the timestamps are genuine is below e^x, -75 = 10^-33
 
 const size_t   MAX_BLOCK_SIZE_INITIAL                        = 1000000;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
@@ -93,6 +100,8 @@ const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              = 4;
 const uint32_t UPGRADE_HEIGHT_V2                             = 0;
 const uint32_t UPGRADE_HEIGHT_V3                             = 1;
 const uint32_t UPGRADE_HEIGHT_V4                             = 300;
+const uint32_t UPGRADE_HEIGHT_LWMA3                          = 500;
+const uint32_t UPGRADE_HEIGHT_V5                             = 4294967294;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90; // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -116,6 +125,7 @@ const uint8_t  BLOCK_MAJOR_VERSION_1                         =  1;
 const uint8_t  BLOCK_MAJOR_VERSION_2                         =  2;
 const uint8_t  BLOCK_MAJOR_VERSION_3                         =  3;
 const uint8_t  BLOCK_MAJOR_VERSION_4                         =  4;
+const uint8_t  BLOCK_MAJOR_VERSION_5                         =  5;
 const uint8_t  BLOCK_MINOR_VERSION_0                         =  0;
 const uint8_t  BLOCK_MINOR_VERSION_1                         =  1;
 
@@ -147,8 +157,8 @@ const uint32_t P2P_IDLE_CONNECTION_KILL_INTERVAL             = (5 * 60);      //
 const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "8f80f9a5a434a9f1510d13336228debfee9c918ce505efe225d8c94d045fa115";
 
 const char* const SEED_NODES[] = {
-  "80.240.31.237:37778",
-  "45.77.91.134:37778"
+  "31.3.91.235:37778",
+  "31.3.91.236:37778"
 };
 
 struct CheckpointData {
