@@ -50,7 +50,7 @@
 #include "WalletServiceErrorCategory.h"
 #include "ITransfersContainer.h"
 
-#include "Mnemonics/electrum-words.cpp"
+#include "mnemonics/electrum-words.cpp"
 
 using namespace CryptoNote;
 
@@ -358,7 +358,7 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
       address = wallet->createAddress();
       log(Logging::INFO, Logging::BRIGHT_WHITE) << "New non-deterministic wallet is generated. Address: " << address;
     }
-  } 
+  }
   else if (!conf.mnemonicSeed.empty()) {
       log(Logging::INFO, Logging::BRIGHT_WHITE) << "Importing wallet from mnemonic seed";
 
