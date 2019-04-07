@@ -276,7 +276,7 @@ bool RpcServer::masternode_check_incoming_tx(const BinaryArray& tx_blob) {
 		logger(INFO) << "Could not parse tx from blob";
 		return false;
 	}
-	
+
 	// always relay fusion transactions
 	uint64_t inputs_amount = 0;
 	get_inputs_money_amount(tx, inputs_amount);
@@ -664,7 +664,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   res.start_time = (uint64_t)m_core.getStartTime();
   // that large uint64_t number is unsafe in JavaScript environment and therefore as a JSON value so we display it as a formatted string
   res.already_generated_coins = m_core.currency().formatAmount(m_core.getTotalGeneratedAmount());
-  
+
   Block blk;
   if (!m_core.getBlockByHash(last_block_hash, blk)) {
 	  throw JsonRpc::JsonRpcError{
@@ -955,6 +955,7 @@ bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& 
   res.block.timestamp = block_header.timestamp;
   res.block.prev_hash = block_header.prev_hash;
   res.block.nonce = block_header.nonce;
+  res.block.orphan_status = block_header.orphan_status;
   res.block.hash = block_header.hash;
   res.block.depth = block_header.depth;
   m_core.getBlockDifficulty(static_cast<uint32_t>(res.block.height), res.block.difficulty);
@@ -1738,7 +1739,7 @@ bool RpcServer::k_on_check_reserve_proof(const K_COMMAND_RPC_CHECK_RESERVE_PROOF
 	if (!m_core.currency().parseAccountAddressString(req.address, address)) {
 		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse address " + req.address + '.' };
 	}
-	
+
 	// parse sugnature
 	const char header[] = "ReserveProofV1";
 	const size_t header_len = strlen(header);
@@ -1761,7 +1762,7 @@ bool RpcServer::k_on_check_reserve_proof(const K_COMMAND_RPC_CHECK_RESERVE_PROOF
 	}
 
 	std::vector<reserve_proof_entry>& proofs = proof_decoded.proofs;
-	
+
 	// compute signature prefix hash
 	std::string prefix_data = req.message;
 	prefix_data.append((const char*)&address, sizeof(CryptoNote::AccountPublicAddress));
@@ -1835,7 +1836,7 @@ bool RpcServer::k_on_check_reserve_proof(const K_COMMAND_RPC_CHECK_RESERVE_PROOF
 		{
 			throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Unknown error" };
 		}
-		
+
 	}
 
 	// check signature for address spend keys
